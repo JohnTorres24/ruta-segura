@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: ruta-segura-backend
+    env: docker
+    plan: free
+    region: oregon
+    branch: rama1
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: DB_URL
+        value: jdbc:postgresql://aws-1-us-west-2.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0
+      - key: DB_USERNAME
+        value: postgres.uvssdivioksbcclsnkas
+      - key: DB_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRATION_MS
+        value: "86400000"

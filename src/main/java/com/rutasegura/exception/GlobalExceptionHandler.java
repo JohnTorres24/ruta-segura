@@ -46,6 +46,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(respuesta);
     }
 
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ErrorResponseDto> manejarConflict(
+            ConflictException ex, HttpServletRequest request) {
+        ErrorResponseDto respuesta = ErrorResponseDto.builder()
+                .marcaTiempo(LocalDateTime.now())
+                .codigoEstado(HttpStatus.CONFLICT.value())
+                .error(HttpStatus.CONFLICT.getReasonPhrase())
+                .mensaje(ex.getMessage())
+                .ruta(request.getRequestURI())
+                .build();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(respuesta);
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponseDto> manejarBadCredentials(
             BadCredentialsException ex, HttpServletRequest request) {

@@ -24,9 +24,9 @@ public class AuthController {
     private final AuthService authService;
 
     /**
-     * Endpoint para el registro de una nueva usuaria.
+     * Endpoint para el registro de una nueva usuaria (admite /registro y /register).
      */
-    @PostMapping("/registro")
+    @PostMapping({"/registro", "/register"})
     public ResponseEntity<AuthResponseDto> registrarUsuaria(@Valid @RequestBody RegistroRequestDto registroDto) {
         AuthResponseDto respuesta = authService.registrar(registroDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(respuesta);

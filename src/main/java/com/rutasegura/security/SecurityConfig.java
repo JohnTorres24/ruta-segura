@@ -65,7 +65,7 @@ public class SecurityConfig {
                                 "/swagger-ui.html"
                         ).permitAll()
                         // Endpoints públicos de registro e inicio de sesión
-                        .requestMatchers("/api/auth/registro", "/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/registro", "/api/auth/register", "/api/auth/login").permitAll()
                         // Perfil de usuaria autenticada
                         .requestMatchers("/api/auth/me").authenticated()
                         // Visualización pública de reportes y estadísticas para el mapa y lista

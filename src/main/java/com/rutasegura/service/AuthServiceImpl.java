@@ -33,7 +33,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthResponseDto registrar(RegistroRequestDto registroDto) {
         if (usuarioRepository.existsByEmail(registroDto.getEmail())) {
-            throw new BadRequestException("El correo electrónico ingresado ya se encuentra registrado en el sistema.");
+            throw new com.rutasegura.exception.ConflictException("El correo electrónico ingresado ya se encuentra registrado en el sistema.");
         }
 
         Usuario usuario = Usuario.builder()

@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 
 /**
  * Objeto de transferencia de datos para la visualización de un reporte en el frontend.
+ * Contiene propiedades duales (referencia/descripcion y categoria/tipo) para máxima compatibilidad con el frontend.
  */
 @Getter
 @Setter
@@ -21,8 +22,10 @@ public class ReporteResponseDto {
 
     private Long id;
     private CategoriaRiesgo categoria;
+    private String tipo;
     private String municipio;
     private String referencia;
+    private String descripcion;
     private Double latitud;
     private Double longitud;
     private LocalDateTime fechaReporte;

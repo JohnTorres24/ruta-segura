@@ -37,7 +37,11 @@ public class ReporteController {
     public ResponseEntity<ReporteResponseDto> crearReporte(
             @Valid @RequestBody ReporteCreateDto createDto,
             Authentication authentication) {
-        String emailUsuaria = authentication.getName();
+        String emailUsuaria = (authentication != null) ? authentication.getName() : null;
+        if (emailUsuaria == null) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "No se encontró la identidad de la usuaria autenticada.");
+        }
         ReporteResponseDto respuesta = reporteService.crearReporte(createDto, emailUsuaria);
         return ResponseEntity.status(HttpStatus.CREATED).body(respuesta);
     }

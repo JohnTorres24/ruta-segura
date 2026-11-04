@@ -56,6 +56,12 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(authorize -> authorize
+                        // Documentación interactiva Swagger / OpenAPI
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
                         // Endpoints públicos de registro e inicio de sesión
                         .requestMatchers("/api/auth/registro", "/api/auth/login").permitAll()
                         // Perfil de usuaria autenticada

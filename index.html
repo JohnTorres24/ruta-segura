@@ -101,6 +101,7 @@ button:focus-visible{outline:2px solid var(--vio);outline-offset:2px}
     <div class="mb-3"><label class="lbl" for="aEm">Correo</label><input id="aEm" type="email" required class="field" autocomplete="email"></div>
     <div class="mb-4"><label class="lbl" for="aPw">Contraseña</label><input id="aPw" type="password" required minlength="6" class="field" autocomplete="current-password"></div>
     <div class="flex gap-2"><button type="button" class="chip flex-1 !py-2.5" data-close>Cancelar</button><button id="aGo" class="btn grad flex-1 !py-2.5">Entrar</button></div>
+    <div class="mt-3 text-[11px] text-center text-[var(--mute)]">Cuenta demo disponible: <span class="font-mono text-purple-600 font-semibold">demo@rutasegura.com</span> / <span class="font-mono text-purple-600 font-semibold">demo123456</span></div>
   </form>
 </div></div>
 
@@ -160,7 +161,7 @@ const MOCK = [
 
 let tt; function toast(msg, ok=true){ const t=$('toast'); t.innerHTML=`<i class="fa-solid ${ok?'fa-circle-check text-emerald-500':'fa-triangle-exclamation text-amber-500'} mr-2"></i>${esc(msg)}`; t.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),3200); }
 
-async function http(path, opts={}, ms=10000){
+async function http(path, opts={}, ms=35000){
   const ctl = new AbortController(), id = setTimeout(()=>ctl.abort(), ms);
   try { return await fetch(S.api + path, {...opts, signal:ctl.signal}); } finally { clearTimeout(id); }
 }
@@ -169,9 +170,11 @@ function setStatus(){
   $('apiTxt').textContent = S.mock ? 'Modo simulación' : 'Conectado';
 }
 async function load(){
+  $('apiDot').className = 'w-2 h-2 rounded-full bg-amber-500 animate-pulse';
+  $('apiTxt').textContent = 'Conectando…';
   try {
-    const r = await http('/reportes');
-    if(!r.ok) throw new Error('Respuesta no satisfactoria');
+    const r = await http('/reportes', {}, 35000);
+    if(!r.ok) throw new Error('Respuesta no satisfactoria: ' + r.status);
     const d = await r.json();
     if(!Array.isArray(d)) throw new Error('Formato inválido');
     S.reports = d.map(item => ({
@@ -189,9 +192,9 @@ async function load(){
 }
 
 const map = L.map('map').setView([4.8588,-74.0583], 13);
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
   maxZoom: 19,
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  attribution: '&copy; Esri &mdash; Fuentes: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, TomTom'
 }).addTo(map);
 const layer = L.layerGroup().addTo(map), markers = {};
 let pick = null;
@@ -286,22 +289,54 @@ $('fAuth').onsubmit = async e => {
   e.preventDefault();
   const email = $('aEm').value.trim(), password = $('aPw').value, nombre = $('aNom').value.trim();
   const body = S.reg ? {nombre, email, password} : {email, password};
-  let data;
+  const btn = $('aGo');
+  const prevText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Conectando...';
+
   try {
-    const r = await http(S.reg ? '/auth/register' : '/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if (r.status===401 || r.status===403) return toast('Correo o contraseña incorrectos', false);
-    if (r.status===409) return toast('Ese correo ya tiene una cuenta. Inicia sesión', false);
-    if (!r.ok) throw new Error('Error de autenticación');
-    data = await r.json();
-  } catch(err){
-    data = {token:'mock.jwt.token', email, nombre: nombre || email.split('@')[0], rol:'ROLE_USER'};
-    S.mock = true; setStatus(); toast('Servidor no disponible: sesión de demostración');
+    let r;
+    if (S.reg) {
+      // Intentar con /auth/register y fallback con /auth/registro por compatibilidad de despliegues
+      r = await http('/auth/register', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}, 35000);
+      if (r.status === 404 || r.status === 401) {
+        r = await http('/auth/registro', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}, 35000);
+      }
+    } else {
+      r = await http('/auth/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}, 35000);
+    }
+
+    if (r.status === 401 || r.status === 403) {
+      toast(S.reg ? 'No fue posible registrar la cuenta' : 'Correo o contraseña incorrectos', false);
+      return;
+    }
+    if (r.status === 409) {
+      toast('Ese correo ya tiene una cuenta registrada. Inicia sesión', false);
+      return;
+    }
+    if (!r.ok) {
+      const err = await r.json().catch(()=>null);
+      toast(err?.mensaje || 'Error al autenticar en el servidor', false);
+      return;
+    }
+
+    const data = await r.json();
+    localStorage.setItem('jwt_token', data.token);
+    S.user = {email: data.email, nombre: data.nombre, rol: data.rol};
+    localStorage.setItem('rs_user', JSON.stringify(S.user));
+    S.mock = false;
+    setStatus();
+    $('mAuth').classList.remove('on');
+    $('aPw').value = '';
+    renderSess();
+    toast(S.reg ? 'Cuenta creada con éxito en la base de datos' : 'Sesión iniciada con éxito');
+  } catch(err) {
+    console.warn('Fallo de conexión en autenticación:', err);
+    toast('No se pudo conectar al servidor: ' + (err.name === 'AbortError' ? 'tiempo de espera agotado' : 'error de red'), false);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = prevText;
   }
-  localStorage.setItem('jwt_token', data.token);
-  S.user = {email:data.email, nombre:data.nombre, rol:data.rol};
-  localStorage.setItem('rs_user', JSON.stringify(S.user));
-  $('mAuth').classList.remove('on'); $('aPw').value=''; renderSess();
-  if (!S.mock) toast(S.reg ? 'Cuenta creada. Ya puedes publicar' : 'Sesión iniciada');
 };
 
 $('btnCfg').onclick = () => { $('cUrl').value = S.api; $('mCfg').classList.add('on'); };
@@ -325,17 +360,32 @@ $('btnSend').onclick = async () => {
   busy(true);
   let saved = null;
   try {
-    const r = await http('/reportes',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('jwt_token')},body:JSON.stringify(body)});
-    if (r.status===401 || r.status===403) { busy(false); return toast('Tu sesión expiró. Inicia sesión de nuevo', false); }
-    if (!r.ok) throw new Error('Error al guardar reporte');
+    const r = await http('/reportes', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('jwt_token')},
+      body:JSON.stringify(body)
+    }, 35000);
+    if (r.status===401 || r.status===403) {
+      busy(false);
+      return toast('Tu sesión expiró o es inválida. Inicia sesión de nuevo', false);
+    }
+    if (!r.ok) {
+      const err = await r.json().catch(()=>null);
+      throw new Error(err?.mensaje || 'Error al guardar reporte');
+    }
     saved = await r.json().catch(()=>null);
-  } catch(err){ S.mock = true; setStatus(); }
+    S.mock = false;
+    setStatus();
+  } catch(err){
+    console.warn('Fallo al reportar en el servidor:', err);
+    toast('Aviso: guardando reporte de forma local', false);
+  }
   const rep = (saved && saved.id) ? saved : {id:Date.now(), ...body, fechaReporte:new Date().toISOString().slice(0,19), nombreUsuaria:(S.user&&S.user.nombre)||'Usuaria Registrada', distanciaKm:+km(ORIGIN[0],ORIGIN[1],body.latitud,body.longitud).toFixed(2)};
   S.reports.unshift(rep);
   busy(false); render();
   $('fRef').value=''; S.pt=null; if(pick){ map.removeLayer(pick); pick=null; }
   $('coords').innerHTML='<i class="fa-solid fa-hand-pointer mr-1"></i>Toca el mapa para marcar el punto exacto.'; $('coords').style.color='';
-  toast(S.mock ? 'Reporte publicado (modo simulación)' : 'Reporte publicado');
+  toast(S.mock ? 'Reporte publicado (modo simulación)' : 'Reporte guardado exitosamente en la nube');
   map.flyTo([rep.latitud,rep.longitud],15,{duration:.8}); markers[rep.id] && markers[rep.id].openPopup();
 };
 

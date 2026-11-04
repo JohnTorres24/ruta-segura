@@ -84,6 +84,21 @@ El proyecto puede configurarse mediante variables de entorno o modificando [`app
 }
 ```
 
+#### Consulta de Perfil de Usuaria
+- **Método:** `GET`
+- **Ruta:** `/api/auth/me`
+- **Acceso:** Protegido (Requiere encabezado `Authorization: Bearer <token>`)
+- **Respuesta Exitosa (200 OK):**
+```json
+{
+  "id": 1,
+  "nombre": "Ana Pérez",
+  "email": "ana.perez@ejemplo.com",
+  "rol": "ROLE_USER",
+  "fechaCreacion": "2026-11-04T10:15:00"
+}
+```
+
 ---
 
 ### 2. Reportes Rápidos de Riesgo (`/api/reportes`)
@@ -142,6 +157,22 @@ El proyecto puede configurarse mediante variables de entorno o modificando [`app
     "distanciaKm": 0.0
   }
 ]
+```
+
+#### Resumen Estadístico de Reportes
+- **Método:** `GET`
+- **Ruta:** `/api/reportes/estadisticas`
+- **Acceso:** Público
+- **Respuesta Exitosa (200 OK):**
+```json
+{
+  "TOTAL_REPORTES": 4,
+  "ACOSO": 1,
+  "ILUMINACION_DEFICIENTE": 1,
+  "ZONA_DESOLADA": 1,
+  "SOSPECHOSO": 1,
+  "OTRO": 0
+}
 ```
 
 ---

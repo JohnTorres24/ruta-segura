@@ -61,6 +61,14 @@ public class ReporteController {
     }
 
     /**
+     * Endpoint público para consultar el resumen estadístico de reportes por categoría.
+     */
+    @GetMapping("/estadisticas")
+    public ResponseEntity<java.util.Map<String, Long>> obtenerEstadisticas() {
+        return ResponseEntity.ok(reporteService.obtenerEstadisticas());
+    }
+
+    /**
      * Endpoint para consultar un reporte específico por su identificador.
      */
     @GetMapping("/{id}")

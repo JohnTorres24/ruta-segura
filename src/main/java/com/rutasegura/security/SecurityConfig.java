@@ -56,9 +56,11 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(authorize -> authorize
-                        // Endpoints públicos de autenticación
-                        .requestMatchers("/api/auth/**").permitAll()
-                        // Visualización pública de reportes para el mapa y lista
+                        // Endpoints públicos de registro e inicio de sesión
+                        .requestMatchers("/api/auth/registro", "/api/auth/login").permitAll()
+                        // Perfil de usuaria autenticada
+                        .requestMatchers("/api/auth/me").authenticated()
+                        // Visualización pública de reportes y estadísticas para el mapa y lista
                         .requestMatchers(HttpMethod.GET, "/api/reportes/**").permitAll()
                         // Solo usuarias autenticadas con token válido pueden registrar reportes
                         .requestMatchers(HttpMethod.POST, "/api/reportes/**").authenticated()

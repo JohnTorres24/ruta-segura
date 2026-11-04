@@ -12,4 +12,6 @@ public interface AuthService {
     AuthResponseDto registrar(RegistroRequestDto registroDto);
 
     AuthResponseDto login(LoginRequestDto loginDto);
+
+    com.rutasegura.dto.UsuarioResponseDto obtenerPerfil(String email);
 }

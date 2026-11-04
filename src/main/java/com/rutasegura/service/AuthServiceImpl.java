@@ -77,4 +77,19 @@ public class AuthServiceImpl implements AuthService {
                 .rol(usuario.getRol().name())
                 .build();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.rutasegura.dto.UsuarioResponseDto obtenerPerfil(String email) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuaria no encontrada con el correo: " + email));
+
+        return com.rutasegura.dto.UsuarioResponseDto.builder()
+                .id(usuario.getId())
+                .nombre(usuario.getNombre())
+                .email(usuario.getEmail())
+                .rol(usuario.getRol())
+                .fechaCreacion(usuario.getFechaCreacion())
+                .build();
+    }
 }

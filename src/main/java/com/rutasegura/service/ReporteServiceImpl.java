@@ -90,6 +90,26 @@ public class ReporteServiceImpl implements ReporteService {
         return mapearADto(reporte, null, null);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Long> obtenerEstadisticas() {
+        List<Reporte> todos = reporteRepository.findAll();
+        java.util.Map<String, Long> estadisticas = new java.util.HashMap<>();
+
+        // Inicializar contadores en cero para todas las categorías
+        for (CategoriaRiesgo cat : CategoriaRiesgo.values()) {
+            estadisticas.put(cat.name(), 0L);
+        }
+
+        for (Reporte rep : todos) {
+            String clave = rep.getCategoria().name();
+            estadisticas.put(clave, estadisticas.getOrDefault(clave, 0L) + 1);
+        }
+
+        estadisticas.put("TOTAL_REPORTES", (long) todos.size());
+        return estadisticas;
+    }
+
     private ReporteResponseDto mapearADto(Reporte reporte, Double origenLat, Double origenLon) {
         Double distancia = null;
         if (origenLat != null && origenLon != null && reporte.getLatitud() != null && reporte.getLongitud() != null) {

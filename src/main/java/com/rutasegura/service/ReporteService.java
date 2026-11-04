@@ -16,4 +16,6 @@ public interface ReporteService {
     List<ReporteResponseDto> listarReportes(CategoriaRiesgo categoria, String municipio, Double latitud, Double longitud);
 
     ReporteResponseDto obtenerReportePorId(Long id);
+
+    java.util.Map<String, Long> obtenerEstadisticas();
 }

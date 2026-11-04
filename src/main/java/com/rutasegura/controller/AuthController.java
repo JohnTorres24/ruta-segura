@@ -40,4 +40,18 @@ public class AuthController {
         AuthResponseDto respuesta = authService.login(loginDto);
         return ResponseEntity.ok(respuesta);
     }
+
+    /**
+     * Endpoint protegido para consultar el perfil de la usuaria autenticada.
+     */
+    @org.springframework.web.bind.annotation.GetMapping("/me")
+    public ResponseEntity<com.rutasegura.dto.UsuarioResponseDto> obtenerMiPerfil(
+            org.springframework.security.core.Authentication authentication) {
+        if (authentication == null || authentication.getName() == null) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "No se encontró la identidad de la usuaria autenticada.");
+        }
+        com.rutasegura.dto.UsuarioResponseDto perfil = authService.obtenerPerfil(authentication.getName());
+        return ResponseEntity.ok(perfil);
+    }
 }

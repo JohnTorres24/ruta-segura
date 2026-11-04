@@ -102,7 +102,7 @@ public class ReporteServiceImpl implements ReporteService {
         }
 
         for (Reporte rep : todos) {
-            String clave = rep.getCategoria().name();
+            String clave = (rep.getCategoria() != null) ? rep.getCategoria().name() : CategoriaRiesgo.OTRO.name();
             estadisticas.put(clave, estadisticas.getOrDefault(clave, 0L) + 1);
         }
 

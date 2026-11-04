@@ -36,8 +36,8 @@ public class Reporte {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @jakarta.persistence.Convert(converter = CategoriaRiesgoConverter.class)
+    @Column(nullable = false, length = 50)
     private CategoriaRiesgo categoria;
 
     @Column(nullable = false, length = 100)

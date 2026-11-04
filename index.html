@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ruta Segura · Mapa colaborativo de zonas de riesgo nocturno</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+:root{--ink:#0f172a;--mute:#64748b;--line:#e2e8f0;--soft:#f8fafc;--soft2:#f1f5f9;--vio:#8b5cf6;--pink:#ec4899}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);background:var(--soft);overflow:hidden;-webkit-font-smoothing:antialiased}
+.panel{background:#fff;border:1px solid var(--line);border-radius:1rem;box-shadow:0 1px 2px rgba(15,23,42,.04),0 4px 14px rgba(15,23,42,.04)}
+.grad{background:linear-gradient(135deg,var(--vio),var(--pink))}
+.field{width:100%;background:#fff;border:1px solid var(--line);border-radius:.75rem;padding:.6rem .8rem;font-size:.875rem;color:var(--ink);outline:none;transition:border-color .2s,box-shadow .2s}
+.field::placeholder{color:#94a3b8}
+.field:focus{border-color:var(--vio);box-shadow:0 0 0 4px rgba(139,92,246,.12)}
+button:focus-visible{outline:2px solid var(--vio);outline-offset:2px}
+.lbl{display:block;font-size:.75rem;font-weight:600;color:var(--mute);margin-bottom:.3rem}
+.cat{display:flex;flex-direction:column;align-items:center;gap:.4rem;padding:.65rem .25rem;border-radius:.9rem;border:1px solid var(--line);background:#fff;font-size:.68rem;font-weight:600;line-height:1.1;text-align:center;color:var(--mute);cursor:pointer;transition:all .18s}
+.cat i{font-size:1.05rem;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 14%,#fff);color:var(--c)}
+.cat:hover{border-color:var(--c);color:var(--ink)}
+.cat[aria-pressed=true]{border-color:var(--c);background:color-mix(in srgb,var(--c) 8%,#fff);color:var(--ink);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 18%,transparent)}
+.cat[aria-pressed=true] i{background:var(--c);color:#fff}
+.chip{padding:.3rem .75rem;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:.75rem;font-weight:600;color:var(--mute);cursor:pointer;white-space:nowrap;transition:all .18s}
+.chip:hover{background:var(--soft2)}
+.chip[aria-pressed=true]{background:var(--c,var(--ink));border-color:var(--c,var(--ink));color:#fff}
+.btn{border:0;border-radius:.8rem;padding:.75rem 1rem;font-weight:700;font-size:.875rem;color:#fff;cursor:pointer;display:flex;gap:.55rem;align-items:center;justify-content:center;transition:transform .15s,box-shadow .2s,opacity .2s;box-shadow:0 4px 14px rgba(139,92,246,.3)}
+.btn:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(139,92,246,.38)}
+.btn:disabled{opacity:.65;cursor:wait;transform:none}
+.spin{width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.card{padding:.8rem .9rem;border-radius:.9rem;border:1px solid var(--line);background:#fff;cursor:pointer;display:flex;gap:.75rem;transition:border-color .18s,box-shadow .18s}
+.card:hover{border-color:#cbd5e1;box-shadow:0 4px 14px rgba(15,23,42,.06)}
+.dot{flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 14%,#fff);color:var(--c);font-size:.9rem}
+.pin{width:30px;height:30px;border-radius:50%;background:var(--c);border:3px solid #fff;box-shadow:0 2px 8px rgba(15,23,42,.3);display:grid;place-items:center;color:#fff;font-size:.72rem}
+.pick{width:22px;height:22px;border-radius:50%;border:3px solid var(--vio);background:rgba(139,92,246,.2);animation:pl 1.6s ease-out infinite}
+@keyframes pl{0%{box-shadow:0 0 0 0 rgba(139,92,246,.5)}100%{box-shadow:0 0 0 20px rgba(139,92,246,0)}}
+.leaflet-container{font-family:'Plus Jakarta Sans',sans-serif;cursor:crosshair;background:#f1f5f9}
+.leaflet-popup-content-wrapper{border-radius:1rem;box-shadow:0 8px 28px rgba(15,23,42,.15)}
+.leaflet-popup-content{margin:14px 16px;font-size:.82rem;line-height:1.5}
+.scroll{overflow-y:auto;scrollbar-width:thin;scrollbar-color:#cbd5e1 transparent}
+#toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,16px);opacity:0;pointer-events:none;transition:all .3s;z-index:9999;max-width:90vw}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.35);backdrop-filter:blur(3px);display:none;place-items:center;z-index:5000;padding:1rem}
+.modal.on{display:grid}
+.tab{flex:1;padding:.5rem;border-radius:.6rem;font-size:.85rem;font-weight:600;color:var(--mute);border:0;background:transparent;cursor:pointer}
+.tab[aria-selected=true]{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(15,23,42,.12)}
+@media (max-width:1023px){body{overflow:auto}#app{height:auto!important}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app" class="flex flex-col" style="height:100vh">
+
+<header class="px-4 py-3 flex flex-wrap items-center gap-3 bg-white border-b border-[var(--line)] relative z-[1000]">
+  <div class="flex items-center gap-2.5 mr-auto">
+    <div class="w-9 h-9 rounded-xl grad grid place-items-center text-white"><i class="fa-solid fa-route"></i></div>
+    <div><h1 class="text-base font-extrabold leading-none tracking-tight">Ruta Segura</h1><p class="text-[11px] text-[var(--mute)] mt-1">Reportes colaborativos para caminar de noche</p></div>
+  </div>
+  <div class="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full bg-[var(--soft2)]" aria-live="polite"><span id="apiDot" class="w-2 h-2 rounded-full bg-amber-500"></span><span id="apiTxt">Comprobando…</span></div>
+  <button id="btnCfg" class="chip" aria-label="Configurar API"><i class="fa-solid fa-sliders mr-1"></i>API</button>
+  <div id="sess"></div>
+</header>
+
+<main class="flex-1 min-h-0 grid lg:grid-cols-[400px_1fr] gap-4 p-4">
+  <aside class="min-h-0 flex flex-col gap-4 lg:overflow-hidden">
+    <section class="panel p-4">
+      <h2 class="text-base font-bold mb-3">Reportar un punto de riesgo</h2>
+      <div id="cats" class="grid grid-cols-5 gap-1.5 mb-3" role="group" aria-label="Categoría del reporte"></div>
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <div><label for="fMun" class="lbl">Municipio</label><input id="fMun" class="field" list="muns" placeholder="Chía"><datalist id="muns"><option>Chía</option><option>Cajicá</option><option>Zipaquirá</option><option>Sopó</option><option>Cota</option><option>Tocancipá</option><option>Bogotá</option><option>Soacha</option><option>Facatativá</option></datalist></div>
+        <div><label for="fRef" class="lbl">Referencia</label><input id="fRef" class="field" placeholder="Calle 7 con Carrera 10"></div>
+      </div>
+      <div id="coords" class="text-xs rounded-xl px-3 py-2.5 mb-3 bg-[var(--soft)] border border-dashed border-[#cbd5e1] text-[var(--mute)]"><i class="fa-solid fa-hand-pointer mr-1"></i>Toca el mapa para marcar el punto exacto.</div>
+      <button id="btnSend" class="btn grad w-full"><span id="sendIc"><i class="fa-solid fa-paper-plane"></i></span><span>Publicar reporte</span></button>
+    </section>
+
+    <section class="panel p-4 flex-1 min-h-0 flex flex-col" style="min-height:340px">
+      <div class="flex items-center gap-2 mb-3">
+        <h2 class="text-base font-bold mr-auto">Reportes <span id="cnt" class="text-sm text-[var(--mute)] font-medium"></span></h2>
+        <select id="sort" class="field !w-auto !py-1.5 !text-xs" aria-label="Ordenar"><option value="dist">Más cercanos</option><option value="date">Más recientes</option></select>
+      </div>
+      <div class="relative mb-2"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[var(--mute)]"></i><input id="q" class="field !pl-8" placeholder="Buscar por municipio" aria-label="Buscar por municipio"></div>
+      <div id="chips" class="flex gap-1.5 overflow-x-auto pb-2 scroll"></div>
+      <div id="list" class="scroll flex-1 min-h-0 flex flex-col gap-2 pr-1 mt-1"></div>
+    </section>
+  </aside>
+  <section class="panel overflow-hidden relative min-h-[60vh]"><div id="map" class="absolute inset-0"></div></section>
+</main>
+</div>
+
+<div id="mAuth" class="modal"><div class="panel p-5 w-full max-w-sm">
+  <div class="flex p-1 rounded-xl bg-[var(--soft2)] mb-4" role="tablist"><button class="tab" id="tLogin" role="tab" aria-selected="true">Iniciar sesión</button><button class="tab" id="tReg" role="tab" aria-selected="false">Crear cuenta</button></div>
+  <form id="fAuth">
+    <div id="rowNom" class="mb-3 hidden"><label class="lbl" for="aNom">Nombre</label><input id="aNom" class="field" autocomplete="name"></div>
+    <div class="mb-3"><label class="lbl" for="aEm">Correo</label><input id="aEm" type="email" required class="field" autocomplete="email"></div>
+    <div class="mb-4"><label class="lbl" for="aPw">Contraseña</label><input id="aPw" type="password" required minlength="6" class="field" autocomplete="current-password"></div>
+    <div class="flex gap-2"><button type="button" class="chip flex-1 !py-2.5" data-close>Cancelar</button><button id="aGo" class="btn grad flex-1 !py-2.5">Entrar</button></div>
+  </form>
+</div></div>
+
+<div id="mCfg" class="modal"><form id="fCfg" class="panel p-5 w-full max-w-sm">
+  <h3 class="text-lg font-bold mb-1">Conexión con el servidor</h3><p class="text-xs text-[var(--mute)] mb-4">Si no responde, la app usa datos de prueba.</p>
+  <label class="lbl" for="cUrl">API_BASE_URL</label><input id="cUrl" class="field mb-4">
+  <div class="flex gap-2"><button type="button" class="chip flex-1 !py-2.5" data-close>Cancelar</button><button class="btn grad flex-1 !py-2.5">Guardar y reconectar</button></div>
+</form></div>
+<div id="toast" class="panel px-4 py-2.5 text-sm font-medium"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const CATS = {
+  ACOSO:{l:'Acoso',i:'fa-person-harassing',c:'#F43F5E',d:'Intimidación verbal, persecución o agresión'},
+  ILUMINACION_DEFICIENTE:{l:'Poca luz',i:'fa-lightbulb',c:'#F59E0B',d:'Luminarias averiadas, calles oscuras'},
+  ZONA_DESOLADA:{l:'Zona sola',i:'fa-road-barrier',c:'#6366F1',d:'Sectores sin flujo peatonal, terrenos baldíos'},
+  SOSPECHOSO:{l:'Sospechoso',i:'fa-eye',c:'#0EA5E9',d:'Personas o vehículos en actitud de alerta'},
+  OTRO:{l:'Otro',i:'fa-circle-exclamation',c:'#64748B',d:'Otros factores de riesgo'}
+};
+
+// URL oficial del Backend en Render
+const DEFAULT_API = "https://ruta-segura-acqj.onrender.com/api";
+const API_BASE_URL = DEFAULT_API;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+// Limpiar URL guardada en localStorage si contenía valores vacíos o antiguos
+let storedApi = localStorage.getItem('api_base_url');
+if (!storedApi || storedApi.includes('undefined')) {
+  storedApi = DEFAULT_API;
+  localStorage.setItem('api_base_url', DEFAULT_API);
+}
+
+const S = { api: storedApi, mock: true, reports: [], cat: null, filter: null, pt: null, user: null, reg: false };
+try { S.user = JSON.parse(localStorage.getItem('rs_user') || 'null'); } catch(e){}
+
+const ago = n => new Date(Date.now() - n*36e5).toISOString().slice(0,19);
+const ORIGIN = [4.8588,-74.0583];
+const km = (a,b,c,d) => {
+  if (a == null || b == null || c == null || d == null) return 0;
+  const r=x=>x*Math.PI/180, h=Math.sin(r(c-a)/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(r(d-b)/2)**2;
+  return 12742*Math.asin(Math.sqrt(h));
+};
+
+const MOCK = [
+ [1,'ILUMINACION_DEFICIENTE','Chía','Parque Central / Calle 7',4.8588,-74.0583,3,'Sofía Giraldo'],
+ [2,'ACOSO','Chía','Av. Pradilla con Carrera 9',4.8641,-74.0562,7,'Valentina Ruiz'],
+ [3,'ZONA_DESOLADA','Chía','Lote baldío junto a la ciclorruta',4.8512,-74.0640,12,'Sofía Giraldo'],
+ [4,'SOSPECHOSO','Cajicá','Estación del Tren, costado norte',4.9186,-74.0277,5,'Camila Torres'],
+ [5,'ILUMINACION_DEFICIENTE','Cajicá','Calle 2 con Carrera 4, sin luminarias',4.9231,-74.0301,26,'Valentina Ruiz'],
+ [6,'ACOSO','Zipaquirá','Plaza de los Comuneros, salida sur',5.0222,-74.0044,2,'Camila Torres'],
+ [7,'ZONA_DESOLADA','Zipaquirá','Sendero hacia el Parque de la Sal',5.0268,-74.0089,30,'Sofía Giraldo'],
+ [8,'OTRO','Chía','Paradero sin cubierta, Carrera 11',4.8695,-74.0521,48,'Camila Torres'],
+ [9,'SOSPECHOSO','Zipaquirá','Parqueadero cerca de la terminal',5.0185,-74.0012,9,'Valentina Ruiz']
+].map(r => ({id:r[0],categoria:r[1],municipio:r[2],referencia:r[3],latitud:r[4],longitud:r[5],fechaReporte:ago(r[6]),nombreUsuaria:r[7],distanciaKm:+km(ORIGIN[0],ORIGIN[1],r[4],r[5]).toFixed(2)}));
+
+let tt; function toast(msg, ok=true){ const t=$('toast'); t.innerHTML=`<i class="fa-solid ${ok?'fa-circle-check text-emerald-500':'fa-triangle-exclamation text-amber-500'} mr-2"></i>${esc(msg)}`; t.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),3200); }
+
+async function http(path, opts={}, ms=10000){
+  const ctl = new AbortController(), id = setTimeout(()=>ctl.abort(), ms);
+  try { return await fetch(S.api + path, {...opts, signal:ctl.signal}); } finally { clearTimeout(id); }
+}
+function setStatus(){
+  $('apiDot').className = 'w-2 h-2 rounded-full ' + (S.mock ? 'bg-amber-500' : 'bg-emerald-500');
+  $('apiTxt').textContent = S.mock ? 'Modo simulación' : 'Conectado';
+}
+async function load(){
+  try {
+    const r = await http('/reportes');
+    if(!r.ok) throw new Error('Respuesta no satisfactoria');
+    const d = await r.json();
+    if(!Array.isArray(d)) throw new Error('Formato inválido');
+    S.reports = d.map(item => ({
+      ...item,
+      distanciaKm: item.distanciaKm != null ? item.distanciaKm : +km(ORIGIN[0], ORIGIN[1], item.latitud, item.longitud).toFixed(2)
+    }));
+    S.mock = false;
+  } catch(e){
+    console.warn('Error al conectar con la API, usando datos iniciales:', e);
+    if (!S.reports.length) S.reports = MOCK.map(x=>({...x}));
+    S.mock = true;
+  }
+  setStatus();
+  render();
+}
+
+const map = L.map('map').setView([4.8588,-74.0583], 13);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap &copy; CARTO'}).addTo(map);
+const layer = L.layerGroup().addTo(map), markers = {};
+let pick = null;
+
+map.on('click', e => {
+  S.pt = {lat:+e.latlng.lat.toFixed(6), lng:+e.latlng.lng.toFixed(6)};
+  if (pick) pick.setLatLng(e.latlng);
+  else pick = L.marker(e.latlng,{icon:L.divIcon({className:'',html:'<div class="pick"></div>',iconSize:[22,22],iconAnchor:[11,11]}),interactive:false}).addTo(map);
+  $('coords').innerHTML = `<i class="fa-solid fa-location-crosshairs mr-1 text-[var(--vio)]"></i>Latitud ${S.pt.lat}, longitud ${S.pt.lng}`;
+  $('coords').style.color = 'var(--ink)';
+});
+
+setTimeout(() => map.invalidateSize(), 300);
+
+const fmtDate = s => new Date(s).toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+
+function buildCats(){
+  $('cats').innerHTML = Object.entries(CATS).map(([k,v]) => `<button type="button" class="cat" style="--c:${v.c}" data-k="${k}" aria-pressed="false" title="${esc(v.d)}"><i class="fa-solid ${v.i}"></i>${v.l}</button>`).join('');
+  $('cats').onclick = e => { const b=e.target.closest('.cat'); if(!b) return; S.cat = b.dataset.k; [...$('cats').children].forEach(x=>x.setAttribute('aria-pressed', x===b)); };
+  $('chips').innerHTML = `<button class="chip" data-k="" aria-pressed="true">Todas</button>` + Object.entries(CATS).map(([k,v]) => `<button class="chip" style="--c:${v.c}" data-k="${k}" aria-pressed="false">${v.l}</button>`).join('');
+  $('chips').onclick = e => { const b=e.target.closest('.chip'); if(!b) return; S.filter = b.dataset.k || null; [...$('chips').children].forEach(x=>x.setAttribute('aria-pressed', x===b)); render(); };
+}
+
+function visible(){
+  const q = $('q').value.trim().toLowerCase();
+  const a = S.reports.filter(r => (!S.filter || r.categoria===S.filter) && (!q || (r.municipio||'').toLowerCase().includes(q)));
+  return a.sort($('sort').value==='dist' ? (x,y)=>(x.distanciaKm||0)-(y.distanciaKm||0) : (x,y)=>new Date(y.fechaReporte)-new Date(x.fechaReporte));
+}
+
+function popup(r){
+  const c = CATS[r.categoria] || CATS.OTRO;
+  const dKm = r.distanciaKm != null ? Number(r.distanciaKm).toFixed(2) : km(ORIGIN[0],ORIGIN[1],r.latitud,r.longitud).toFixed(2);
+  return `<div style="min-width:190px"><div style="font-weight:700;color:${c.c}"><i class="fa-solid ${c.i}"></i> ${c.l}</div>
+  <div style="margin:.3rem 0;font-weight:600">${esc(r.referencia || r.descripcion)}</div>
+  <div style="color:#64748b">${esc(r.municipio)} · ${fmtDate(r.fechaReporte)}</div>
+  <div style="color:#64748b">Por ${esc(r.nombreUsuaria || 'Usuaria')} · a ${dKm} km</div></div>`;
+}
+
+function render(){
+  const rs = visible();
+  layer.clearLayers();
+  rs.forEach(r => {
+    if (r.latitud && r.longitud) {
+      const c = CATS[r.categoria] || CATS.OTRO;
+      markers[r.id] = L.marker([r.latitud,r.longitud],{icon:L.divIcon({className:'',html:`<div class="pin" style="--c:${c.c}"><i class="fa-solid ${c.i}"></i></div>`,iconSize:[30,30],iconAnchor:[15,15],popupAnchor:[0,-16]})}).bindPopup(popup(r)).addTo(layer);
+    }
+  });
+  $('cnt').textContent = `(${rs.length})`;
+  $('list').innerHTML = rs.length ? rs.map(r => {
+    const c = CATS[r.categoria] || CATS.OTRO;
+    const dKm = r.distanciaKm != null ? Number(r.distanciaKm).toFixed(2) : km(ORIGIN[0],ORIGIN[1],r.latitud,r.longitud).toFixed(2);
+    return `<article class="card" style="--c:${c.c}" tabindex="0" data-id="${r.id}">
+    <div class="dot"><i class="fa-solid ${c.i}"></i></div>
+    <div class="min-w-0 flex-1"><div class="flex items-center text-sm font-bold"><span style="color:${c.c}">${c.l}</span><span class="ml-auto text-xs font-semibold text-[var(--mute)]">${dKm} km</span></div>
+    <p class="text-sm mt-0.5">${esc(r.referencia || r.descripcion)}</p>
+    <p class="text-xs text-[var(--mute)] mt-1">${esc(r.municipio)} · ${fmtDate(r.fechaReporte)} · ${esc(r.nombreUsuaria || 'Usuaria')}</p></div></article>`;
+  }).join('')
+  : `<p class="text-sm text-[var(--mute)] p-3">No hay reportes con estos filtros. Prueba con otra categoría o municipio, o publica el primero.</p>`;
+}
+
+$('list').onclick = $('list').onkeydown = e => {
+  if (e.type==='keydown' && e.key!=='Enter') return;
+  const c = e.target.closest('.card'); if(!c) return;
+  const m = markers[c.dataset.id]; if(m){ map.flyTo(m.getLatLng(),15,{duration:.8}); m.openPopup(); }
+  if (innerWidth<1024) $('map').scrollIntoView({behavior:'smooth'});
+};
+$('sort').onchange = render; $('q').oninput = render;
+
+/* Sesión */
+function renderSess(){
+  $('sess').innerHTML = S.user
+    ? `<div class="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="fa-solid fa-circle-user"></i><span>${esc(S.user.nombre || S.user.email)}</span><button id="bOut" class="text-emerald-400 hover:text-emerald-700" aria-label="Cerrar sesión"><i class="fa-solid fa-right-from-bracket"></i></button></div>`
+    : `<button id="bIn" class="btn grad !py-2 !px-4 !text-xs"><i class="fa-solid fa-user"></i>Iniciar sesión / Registrarse</button>`;
+  const i=$('bIn'), o=$('bOut');
+  if(i) i.onclick = () => $('mAuth').classList.add('on');
+  if(o) o.onclick = () => { localStorage.removeItem('jwt_token'); localStorage.removeItem('rs_user'); S.user=null; renderSess(); toast('Sesión cerrada'); };
+}
+
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('.modal').classList.remove('on'));
+document.querySelectorAll('.modal').forEach(m => m.onclick = e => { if(e.target===m) m.classList.remove('on'); });
+
+function setTab(reg){
+  S.reg = reg;
+  $('tLogin').setAttribute('aria-selected', !reg); $('tReg').setAttribute('aria-selected', reg);
+  $('rowNom').classList.toggle('hidden', !reg); $('aNom').required = reg;
+  $('aGo').textContent = reg ? 'Crear cuenta' : 'Entrar';
+  $('aPw').autocomplete = reg ? 'new-password' : 'current-password';
+}
+$('tLogin').onclick = () => setTab(false); $('tReg').onclick = () => setTab(true);
+
+$('fAuth').onsubmit = async e => {
+  e.preventDefault();
+  const email = $('aEm').value.trim(), password = $('aPw').value, nombre = $('aNom').value.trim();
+  const body = S.reg ? {nombre, email, password} : {email, password};
+  let data;
+  try {
+    const r = await http(S.reg ? '/auth/register' : '/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if (r.status===401 || r.status===403) return toast('Correo o contraseña incorrectos', false);
+    if (r.status===409) return toast('Ese correo ya tiene una cuenta. Inicia sesión', false);
+    if (!r.ok) throw new Error('Error de autenticación');
+    data = await r.json();
+  } catch(err){
+    data = {token:'mock.jwt.token', email, nombre: nombre || email.split('@')[0], rol:'ROLE_USER'};
+    S.mock = true; setStatus(); toast('Servidor no disponible: sesión de demostración');
+  }
+  localStorage.setItem('jwt_token', data.token);
+  S.user = {email:data.email, nombre:data.nombre, rol:data.rol};
+  localStorage.setItem('rs_user', JSON.stringify(S.user));
+  $('mAuth').classList.remove('on'); $('aPw').value=''; renderSess();
+  if (!S.mock) toast(S.reg ? 'Cuenta creada. Ya puedes publicar' : 'Sesión iniciada');
+};
+
+$('btnCfg').onclick = () => { $('cUrl').value = S.api; $('mCfg').classList.add('on'); };
+$('fCfg').onsubmit = e => {
+  e.preventDefault();
+  S.api = $('cUrl').value.trim().replace(/\/+$/,'') || DEFAULT_API;
+  localStorage.setItem('api_base_url', S.api);
+  $('mCfg').classList.remove('on'); $('apiTxt').textContent='Comprobando…'; load();
+};
+
+/* Publicar */
+function busy(on){ $('btnSend').disabled = on; $('sendIc').innerHTML = on ? '<span class="spin"></span>' : '<i class="fa-solid fa-paper-plane"></i>'; }
+
+$('btnSend').onclick = async () => {
+  const mun = $('fMun').value.trim(), ref = $('fRef').value.trim();
+  if (!localStorage.getItem('jwt_token')) { toast('Inicia sesión para publicar', false); return $('mAuth').classList.add('on'); }
+  if (!S.cat) return toast('Elige una categoría de riesgo', false);
+  if (!mun || !ref) return toast('Completa municipio y referencia', false);
+  if (!S.pt) return toast('Toca el mapa para marcar el punto', false);
+  const body = {categoria:S.cat, municipio:mun, referencia:ref, latitud:S.pt.lat, longitud:S.pt.lng};
+  busy(true);
+  let saved = null;
+  try {
+    const r = await http('/reportes',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('jwt_token')},body:JSON.stringify(body)});
+    if (r.status===401 || r.status===403) { busy(false); return toast('Tu sesión expiró. Inicia sesión de nuevo', false); }
+    if (!r.ok) throw new Error('Error al guardar reporte');
+    saved = await r.json().catch(()=>null);
+  } catch(err){ S.mock = true; setStatus(); }
+  const rep = (saved && saved.id) ? saved : {id:Date.now(), ...body, fechaReporte:new Date().toISOString().slice(0,19), nombreUsuaria:(S.user&&S.user.nombre)||'Usuaria Registrada', distanciaKm:+km(ORIGIN[0],ORIGIN[1],body.latitud,body.longitud).toFixed(2)};
+  S.reports.unshift(rep);
+  busy(false); render();
+  $('fRef').value=''; S.pt=null; if(pick){ map.removeLayer(pick); pick=null; }
+  $('coords').innerHTML='<i class="fa-solid fa-hand-pointer mr-1"></i>Toca el mapa para marcar el punto exacto.'; $('coords').style.color='';
+  toast(S.mock ? 'Reporte publicado (modo simulación)' : 'Reporte publicado');
+  map.flyTo([rep.latitud,rep.longitud],15,{duration:.8}); markers[rep.id] && markers[rep.id].openPopup();
+};
+
+// Inicialización
+buildCats();
+renderSess();
+load();
+</script>
+</body>
+</html>
